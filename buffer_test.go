@@ -273,3 +273,29 @@ func TestBuffer_HalfReadWrite(t *testing.T) {
 		t.Fail()
 	}
 }
+
+func TestBuffer_Release(t *testing.T) {
+	buf := NewBuffer()
+
+	buf.WriteInt64(1)
+
+	if buf.Ref() != 1 {
+		t.Fail()
+	}
+
+	buf.IncrRef()
+	if buf.Ref() != 2 {
+		t.Fail()
+	}
+
+	buf.Release()
+	buf.Release()
+	if buf.Ref() != 0 {
+		t.Fail()
+	}
+
+	buf.Release()
+	if buf.Ref() != 0 {
+		t.Fail()
+	}
+}

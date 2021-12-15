@@ -2,12 +2,18 @@ package buffer
 
 import (
 	"errors"
+	"sync"
 )
 
 var (
 	ErrBufferOverflow  = errors.New("buffer size overflow")
 	ErrBufferNotEnough = errors.New("buffer has no enough data")
 	defaultBufferSize  = 8192
+	bufferPool         = &sync.Pool{
+		New: func() interface{} {
+			return new(Buffer)
+		},
+	}
 )
 
 type Buffer struct {
@@ -183,6 +189,38 @@ func (t *Buffer) Cap() int {
 	}
 
 	return -1
+}
+
+func (t *Buffer) Ref() int {
+	return t.ref
+}
+
+func (t *Buffer) IncrRef() {
+	t.ref++
+}
+
+func (t *Buffer) Release() {
+	if t.ref <= 0 {
+		return
+	}
+
+	t.ref--
+	if t.ref > 0 {
+		return
+	}
+
+	for t.head != nil {
+		h := t.head
+		t.head = t.head.next
+
+		h.release()
+	}
+	t.tail = nil
+	t.r = nil
+	t.size = 0
+	t.cap = 0
+	t.minSize = 0
+	bufferPool.Put(t)
 }
 
 //#endregion
@@ -363,7 +401,7 @@ func (t *Buffer) releaseHead() {
 			t.r = t.head
 		}
 
-		releaseNode(h)
+		h.release()
 	}
 
 	if t.head == nil {
@@ -387,15 +425,10 @@ func NewBufferCap(minSize int, cap int) *Buffer {
 		minSize = defaultBufferSize
 	}
 
-	b := &Buffer{
-		head:    nil,
-		tail:    nil,
-		r:       nil,
-		size:    0,
-		cap:     cap,
-		ref:     1,
-		minSize: minSize,
-	}
+	b := bufferPool.Get().(*Buffer)
+	b.cap = cap
+	b.minSize = minSize
+	b.ref = 1
 
 	return b
 }

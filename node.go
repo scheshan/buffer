@@ -1,5 +1,15 @@
 package buffer
 
+import "sync"
+
+var (
+	nodePool = &sync.Pool{
+		New: func() interface{} {
+			return &node{}
+		},
+	}
+)
+
 type node struct {
 	b    []byte
 	next *node
@@ -17,14 +27,21 @@ func (t *node) len() int {
 	return t.w - t.r
 }
 
-//newNode return a new node instance
-func newNode(size int) *node {
-	n := new(node)
-	n.b = make([]byte, size)
+//release free the resource which node uses
+func (t *node) release() {
+	releaseBytes(t.b)
 
-	return n
+	t.b = nil
+	t.next = nil
+	t.w = 0
+	t.r = 0
+	nodePool.Put(t)
 }
 
-func releaseNode(node *node) {
+//newNode return a new node instance
+func newNode(size int) *node {
+	n := nodePool.Get().(*node)
+	n.b = getBytes(size)
 
+	return n
 }
