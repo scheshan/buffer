@@ -288,13 +288,12 @@ func (t *Buffer) writeUInt64(n uint64) {
 }
 
 func (t *Buffer) readUInt8() (n uint8) {
-	for t.r.len() == 0 {
-		t.r = t.r.next
-	}
-
 	n = t.r.b[t.r.r]
 	t.r.r++
 	t.size--
+
+	t.releaseHead()
+
 	return
 }
 
@@ -304,6 +303,8 @@ func (t *Buffer) readUInt16() (n uint16) {
 		n |= uint16(t.r.b[t.r.r+1])
 		t.r.r += 2
 		t.size -= 2
+
+		t.releaseHead()
 	} else {
 		n = uint16(t.readUInt8()) << 8
 		n |= uint16(t.readUInt8())
@@ -320,6 +321,8 @@ func (t *Buffer) readUInt32() (n uint32) {
 		n |= uint32(t.r.b[t.r.r+3])
 		t.r.r += 4
 		t.size -= 4
+
+		t.releaseHead()
 	} else {
 		n = uint32(t.readUInt16()) << 16
 		n |= uint32(t.readUInt16())
@@ -340,12 +343,33 @@ func (t *Buffer) readUInt64() (n uint64) {
 		n |= uint64(t.r.b[t.r.r+7])
 		t.r.r += 8
 		t.size -= 8
+
+		t.releaseHead()
 	} else {
 		n = uint64(t.readUInt32()) << 32
 		n |= uint64(t.readUInt32())
 	}
 
 	return
+}
+
+//releaseHead tries to release empty nodes.
+//After every single read, releaseHead should be called.
+func (t *Buffer) releaseHead() {
+	for t.head != nil && t.head.len() == 0 && t.head.cap() == 0 {
+		h := t.head
+		t.head = t.head.next
+		if t.r == h {
+			t.r = t.head
+		}
+
+		releaseNode(h)
+	}
+
+	if t.head == nil {
+		t.r = nil
+		t.tail = nil
+	}
 }
 
 //#endregion

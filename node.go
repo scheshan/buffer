@@ -24,3 +24,7 @@ func newNode(size int) *node {
 
 	return n
 }
+
+func releaseNode(node *node) {
+
+}
