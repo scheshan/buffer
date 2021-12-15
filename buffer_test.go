@@ -29,6 +29,11 @@ func TestBuffer_Cap(t *testing.T) {
 	if err := buf.WriteUInt64(1); err != ErrBufferOverflow {
 		t.Fail()
 	}
+
+	buf = NewBuffer()
+	if buf.Cap() != -1 {
+		t.Fail()
+	}
 }
 
 func TestBuffer_Len(t *testing.T) {

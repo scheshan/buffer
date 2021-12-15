@@ -2,7 +2,6 @@ package buffer
 
 import (
 	"errors"
-	"strconv"
 )
 
 var (
@@ -85,23 +84,13 @@ func (t *Buffer) ReadInt64() (int64, error) {
 }
 
 func (t *Buffer) ReadInt() (int, error) {
-	if strconv.IntSize == 32 {
-		n, err := t.ReadInt32()
-		return int(n), err
-	} else {
-		n, err := t.ReadInt64()
-		return int(n), err
-	}
+	n, err := t.ReadInt64()
+	return int(n), err
 }
 
 func (t *Buffer) ReadUInt() (int, error) {
-	if strconv.IntSize == 32 {
-		n, err := t.ReadUInt32()
-		return int(n), err
-	} else {
-		n, err := t.ReadUInt64()
-		return int(n), err
-	}
+	n, err := t.ReadUInt64()
+	return int(n), err
 }
 
 //#endregion
@@ -173,19 +162,11 @@ func (t *Buffer) WriteInt64(n int64) error {
 }
 
 func (t *Buffer) WriteInt(n int) error {
-	if strconv.IntSize == 32 {
-		return t.WriteInt32(int32(n))
-	} else {
-		return t.WriteInt64(int64(n))
-	}
+	return t.WriteInt64(int64(n))
 }
 
 func (t *Buffer) WriteUInt(n uint) error {
-	if strconv.IntSize == 32 {
-		return t.WriteUInt32(uint32(n))
-	} else {
-		return t.WriteUInt64(uint64(n))
-	}
+	return t.WriteUInt64(uint64(n))
 }
 
 //#endregion
