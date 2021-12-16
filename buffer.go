@@ -9,8 +9,8 @@ import (
 )
 
 var (
-	ErrBufferOverflow  = errors.New("buffer size overflow")
 	ErrBufferNotEnough = errors.New("buffer has no enough data")
+	ErrBufferReleased  = errors.New("buffer has released")
 	defaultBufferSize  = 8192
 	bufferPool         = &sync.Pool{
 		New: func() interface{} {
@@ -23,7 +23,6 @@ type Buffer struct {
 	head    *node
 	tail    *node
 	size    int
-	cap     int
 	ref     int
 	minSize int
 }
@@ -40,7 +39,7 @@ func (t *Buffer) ReadBool() (bool, error) {
 }
 
 func (t *Buffer) ReadUInt8() (uint8, error) {
-	if err := t.checkLen(1); err != nil {
+	if err := t.checkRead(1); err != nil {
 		return 0, err
 	}
 
@@ -53,7 +52,7 @@ func (t *Buffer) ReadInt8() (int8, error) {
 }
 
 func (t *Buffer) ReadUInt16() (uint16, error) {
-	if err := t.checkLen(2); err != nil {
+	if err := t.checkRead(2); err != nil {
 		return 0, err
 	}
 
@@ -66,7 +65,7 @@ func (t *Buffer) ReadInt16() (int16, error) {
 }
 
 func (t *Buffer) ReadUInt32() (uint32, error) {
-	if err := t.checkLen(4); err != nil {
+	if err := t.checkRead(4); err != nil {
 		return 0, err
 	}
 
@@ -79,7 +78,7 @@ func (t *Buffer) ReadInt32() (int32, error) {
 }
 
 func (t *Buffer) ReadUInt64() (uint64, error) {
-	if err := t.checkLen(8); err != nil {
+	if err := t.checkRead(8); err != nil {
 		return 0, err
 	}
 
@@ -102,7 +101,7 @@ func (t *Buffer) ReadUInt() (int, error) {
 }
 
 func (t *Buffer) CopyToFile(fd int) (n int, err error, complete bool) {
-	if err := t.checkLen(1); err != nil {
+	if err := t.checkRead(1); err != nil {
 		return 0, err, false
 	}
 
@@ -120,7 +119,7 @@ func (t *Buffer) CopyToFile(fd int) (n int, err error, complete bool) {
 }
 
 func (t *Buffer) ReadBytes(n int) ([]byte, error) {
-	if err := t.checkLen(n); err != nil {
+	if err := t.checkRead(n); err != nil {
 		return nil, err
 	}
 
@@ -166,7 +165,7 @@ func (t *Buffer) WriteBool(n bool) error {
 }
 
 func (t *Buffer) WriteUInt8(n uint8) error {
-	if err := t.checkCap(1); err != nil {
+	if err := t.checkWrite(1); err != nil {
 		return err
 	}
 
@@ -179,7 +178,7 @@ func (t *Buffer) WriteInt8(n int8) error {
 }
 
 func (t *Buffer) WriteUInt16(n uint16) error {
-	if err := t.checkCap(2); err != nil {
+	if err := t.checkWrite(2); err != nil {
 		return err
 	}
 
@@ -192,7 +191,7 @@ func (t *Buffer) WriteInt16(n int16) error {
 }
 
 func (t *Buffer) WriteUInt32(n uint32) error {
-	if err := t.checkCap(4); err != nil {
+	if err := t.checkWrite(4); err != nil {
 		return err
 	}
 
@@ -205,7 +204,7 @@ func (t *Buffer) WriteInt32(n int32) error {
 }
 
 func (t *Buffer) WriteUInt64(n uint64) error {
-	if err := t.checkCap(8); err != nil {
+	if err := t.checkWrite(8); err != nil {
 		return err
 	}
 
@@ -226,6 +225,10 @@ func (t *Buffer) WriteUInt(n uint) error {
 }
 
 func (t *Buffer) CopyFromFile(fd int) (n int, err error, complete bool) {
+	if t.ref == 0 {
+		return 0, ErrBufferReleased, false
+	}
+
 	if t.tail == nil || t.tail.cap() == 0 {
 		t.addNode(t.minSize)
 	}
@@ -242,11 +245,11 @@ func (t *Buffer) CopyFromFile(fd int) (n int, err error, complete bool) {
 }
 
 func (t *Buffer) WriteBytes(data []byte) error {
+	if err := t.checkWrite(len(data)); err != nil {
+		return err
+	}
 	if data == nil || len(data) == 0 {
 		return nil
-	}
-	if err := t.checkCap(len(data)); err != nil {
-		return err
 	}
 
 	n := 0
@@ -280,14 +283,6 @@ func (t *Buffer) Len() int {
 	return t.size
 }
 
-func (t *Buffer) Cap() int {
-	if t.cap >= 0 {
-		return t.cap
-	}
-
-	return -1
-}
-
 func (t *Buffer) Ref() int {
 	return t.ref
 }
@@ -296,14 +291,14 @@ func (t *Buffer) IncrRef() {
 	t.ref++
 }
 
-func (t *Buffer) Release() {
+func (t *Buffer) Release() error {
 	if t.ref <= 0 {
-		return
+		return ErrBufferReleased
 	}
 
 	t.ref--
 	if t.ref > 0 {
-		return
+		return nil
 	}
 
 	for t.head != nil {
@@ -314,16 +309,20 @@ func (t *Buffer) Release() {
 	}
 	t.tail = nil
 	t.size = 0
-	t.cap = 0
 	t.minSize = 0
 	bufferPool.Put(t)
+
+	return nil
 }
 
 //#endregion
 
 //#region private methods
 
-func (t *Buffer) checkLen(n int) error {
+func (t *Buffer) checkRead(n int) error {
+	if t.ref <= 0 {
+		return ErrBufferReleased
+	}
 	if t.Len() < n {
 		return ErrBufferNotEnough
 	}
@@ -331,9 +330,9 @@ func (t *Buffer) checkLen(n int) error {
 	return nil
 }
 
-func (t *Buffer) checkCap(n int) error {
-	if t.cap >= 0 && t.Len()+n > t.cap {
-		return ErrBufferOverflow
+func (t *Buffer) checkWrite(n int) error {
+	if t.ref <= 0 {
+		return ErrBufferReleased
 	}
 
 	return nil
@@ -525,16 +524,11 @@ func NewBuffer() *Buffer {
 }
 
 func NewBufferSize(minSize int) *Buffer {
-	return NewBufferCap(minSize, -1)
-}
-
-func NewBufferCap(minSize int, cap int) *Buffer {
 	if minSize <= 0 {
 		minSize = defaultBufferSize
 	}
 
 	b := bufferPool.Get().(*Buffer)
-	b.cap = cap
 	b.minSize = minSize
 	b.ref = 1
 

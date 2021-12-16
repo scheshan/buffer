@@ -6,38 +6,6 @@ import (
 	"testing"
 )
 
-func TestBuffer_Cap(t *testing.T) {
-	buf := NewBufferCap(0, 1)
-	if buf.Cap() != 1 {
-		t.Fail()
-	}
-
-	if err := buf.WriteByte(1); err != nil {
-		t.Fail()
-	}
-
-	if err := buf.WriteUInt8(1); err != ErrBufferOverflow {
-		t.Fail()
-	}
-
-	if err := buf.WriteUInt16(1); err != ErrBufferOverflow {
-		t.Fail()
-	}
-
-	if err := buf.WriteUInt32(1); err != ErrBufferOverflow {
-		t.Fail()
-	}
-
-	if err := buf.WriteUInt64(1); err != ErrBufferOverflow {
-		t.Fail()
-	}
-
-	buf = NewBuffer()
-	if buf.Cap() != -1 {
-		t.Fail()
-	}
-}
-
 func TestBuffer_Len(t *testing.T) {
 	buf := NewBuffer()
 
@@ -296,8 +264,28 @@ func TestBuffer_Release(t *testing.T) {
 		t.Fail()
 	}
 
-	buf.Release()
-	if buf.Ref() != 0 {
+	if err := buf.Release(); err != ErrBufferReleased || buf.Ref() != 0 {
+		t.Fail()
+	}
+	if err := buf.WriteUInt8(1); err != ErrBufferReleased {
+		t.Fail()
+	}
+	if err := buf.WriteUInt16(1); err != ErrBufferReleased {
+		t.Fail()
+	}
+	if err := buf.WriteUInt32(1); err != ErrBufferReleased {
+		t.Fail()
+	}
+	if err := buf.WriteUInt64(1); err != ErrBufferReleased {
+		t.Fail()
+	}
+	if err := buf.WriteBytes([]byte{1}); err != ErrBufferReleased {
+		t.Fail()
+	}
+	if _, err, _ := buf.CopyFromFile(3); err != ErrBufferReleased {
+		t.Fail()
+	}
+	if _, err, _ := buf.CopyToFile(3); err != ErrBufferReleased {
 		t.Fail()
 	}
 }
@@ -362,11 +350,7 @@ func TestBuffer_WriteBytes(t *testing.T) {
 		t.Fail()
 	}
 
-	buf = NewBufferCap(0, 1)
 	if err := buf.WriteBytes(nil); err != nil {
-		t.Fail()
-	}
-	if err := buf.WriteBytes([]byte{1, 2}); err != ErrBufferOverflow {
 		t.Fail()
 	}
 }
