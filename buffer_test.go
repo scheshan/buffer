@@ -339,3 +339,34 @@ func TestBuffer_CopyToFile(t *testing.T) {
 
 	os.Remove(path)
 }
+
+func TestBuffer_WriteBytes(t *testing.T) {
+	buf := NewBufferSize(4)
+	buf.WriteByte(1)
+
+	data := []byte{1, 2, 3, 4}
+	buf.WriteBytes(data)
+
+	if _, err := buf.ReadByte(); err != nil {
+		t.Fail()
+	}
+	d2, err := buf.ReadBytes(4)
+	if err != nil {
+		t.Fail()
+	}
+	if len(d2) != 4 || d2[0] != 1 || d2[1] != 2 || d2[2] != 3 || d2[3] != 4 {
+		t.Fail()
+	}
+
+	if _, err := buf.ReadBytes(1); err != ErrBufferNotEnough {
+		t.Fail()
+	}
+
+	buf = NewBufferCap(0, 1)
+	if err := buf.WriteBytes(nil); err != nil {
+		t.Fail()
+	}
+	if err := buf.WriteBytes([]byte{1, 2}); err != ErrBufferOverflow {
+		t.Fail()
+	}
+}

@@ -20,7 +20,6 @@ var (
 type Buffer struct {
 	head    *node
 	tail    *node
-	r       *node
 	size    int
 	cap     int
 	ref     int
@@ -118,6 +117,27 @@ func (t *Buffer) CopyToFile(fd int) (n int, err error, complete bool) {
 	return
 }
 
+func (t *Buffer) ReadBytes(n int) ([]byte, error) {
+	if err := t.checkLen(n); err != nil {
+		return nil, err
+	}
+
+	res := make([]byte, n)
+
+	cnt := 0
+	for cnt < n {
+		cn := copy(res[cnt:], t.head.b[t.head.r:t.head.w])
+		t.head.r += cn
+		cnt += cn
+
+		t.releaseHead()
+	}
+
+	t.size -= n
+
+	return res, nil
+}
+
 //#endregion
 
 //#region write methods
@@ -210,6 +230,32 @@ func (t *Buffer) CopyFromFile(fd int) (n int, err error, complete bool) {
 	return
 }
 
+func (t *Buffer) WriteBytes(data []byte) error {
+	if data == nil || len(data) == 0 {
+		return nil
+	}
+	if err := t.checkCap(len(data)); err != nil {
+		return err
+	}
+
+	n := 0
+	if t.tail != nil && t.tail.cap() > 0 {
+		cn := copy(t.tail.b[t.tail.w:], data)
+		t.tail.w += cn
+		n += cn
+	}
+
+	if n < len(data) {
+		t.addNode(len(data) - n)
+		cn := copy(t.tail.b[t.tail.w:], data[n:])
+		t.tail.w += cn
+	}
+
+	t.size += len(data)
+
+	return nil
+}
+
 //#endregion
 
 //#region public methods
@@ -251,7 +297,6 @@ func (t *Buffer) Release() {
 		h.release()
 	}
 	t.tail = nil
-	t.r = nil
 	t.size = 0
 	t.cap = 0
 	t.minSize = 0
@@ -282,7 +327,6 @@ func (t *Buffer) addTail(node *node) {
 	if t.tail == nil {
 		t.head = node
 		t.tail = node
-		t.r = node
 	} else {
 		t.tail.next = node
 		t.tail = node
@@ -290,6 +334,10 @@ func (t *Buffer) addTail(node *node) {
 }
 
 func (t *Buffer) addNode(size int) {
+	if size < t.minSize {
+		size = t.minSize
+	}
+
 	node := newNode(size)
 	t.addTail(node)
 }
@@ -361,8 +409,8 @@ func (t *Buffer) writeUInt64(n uint64) {
 }
 
 func (t *Buffer) readUInt8() (n uint8) {
-	n = t.r.b[t.r.r]
-	t.r.r++
+	n = t.head.b[t.head.r]
+	t.head.r++
 	t.size--
 
 	t.releaseHead()
@@ -371,10 +419,10 @@ func (t *Buffer) readUInt8() (n uint8) {
 }
 
 func (t *Buffer) readUInt16() (n uint16) {
-	if t.r.len() >= 2 {
-		n = uint16(t.r.b[t.r.r]) << 8
-		n |= uint16(t.r.b[t.r.r+1])
-		t.r.r += 2
+	if t.head.len() >= 2 {
+		n = uint16(t.head.b[t.head.r]) << 8
+		n |= uint16(t.head.b[t.head.r+1])
+		t.head.r += 2
 		t.size -= 2
 
 		t.releaseHead()
@@ -387,12 +435,12 @@ func (t *Buffer) readUInt16() (n uint16) {
 }
 
 func (t *Buffer) readUInt32() (n uint32) {
-	if t.r.len() >= 4 {
-		n = uint32(t.r.b[t.r.r]) << 24
-		n |= uint32(t.r.b[t.r.r+1]) << 16
-		n |= uint32(t.r.b[t.r.r+2]) << 8
-		n |= uint32(t.r.b[t.r.r+3])
-		t.r.r += 4
+	if t.head.len() >= 4 {
+		n = uint32(t.head.b[t.head.r]) << 24
+		n |= uint32(t.head.b[t.head.r+1]) << 16
+		n |= uint32(t.head.b[t.head.r+2]) << 8
+		n |= uint32(t.head.b[t.head.r+3])
+		t.head.r += 4
 		t.size -= 4
 
 		t.releaseHead()
@@ -405,16 +453,16 @@ func (t *Buffer) readUInt32() (n uint32) {
 }
 
 func (t *Buffer) readUInt64() (n uint64) {
-	if t.r.len() >= 8 {
-		n = uint64(t.r.b[t.r.r]) << 56
-		n |= uint64(t.r.b[t.r.r+1]) << 48
-		n |= uint64(t.r.b[t.r.r+2]) << 40
-		n |= uint64(t.r.b[t.r.r+3]) << 32
-		n |= uint64(t.r.b[t.r.r+4]) << 24
-		n |= uint64(t.r.b[t.r.r+5]) << 16
-		n |= uint64(t.r.b[t.r.r+6]) << 8
-		n |= uint64(t.r.b[t.r.r+7])
-		t.r.r += 8
+	if t.head.len() >= 8 {
+		n = uint64(t.head.b[t.head.r]) << 56
+		n |= uint64(t.head.b[t.head.r+1]) << 48
+		n |= uint64(t.head.b[t.head.r+2]) << 40
+		n |= uint64(t.head.b[t.head.r+3]) << 32
+		n |= uint64(t.head.b[t.head.r+4]) << 24
+		n |= uint64(t.head.b[t.head.r+5]) << 16
+		n |= uint64(t.head.b[t.head.r+6]) << 8
+		n |= uint64(t.head.b[t.head.r+7])
+		t.head.r += 8
 		t.size -= 8
 
 		t.releaseHead()
@@ -432,15 +480,11 @@ func (t *Buffer) releaseHead() {
 	for t.head != nil && t.head.len() == 0 && t.head.cap() == 0 {
 		h := t.head
 		t.head = t.head.next
-		if t.r == h {
-			t.r = t.head
-		}
 
 		h.release()
 	}
 
 	if t.head == nil {
-		t.r = nil
 		t.tail = nil
 	}
 }
