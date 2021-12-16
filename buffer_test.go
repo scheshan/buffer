@@ -371,3 +371,32 @@ func TestBuffer_WriteString(t *testing.T) {
 		t.Fail()
 	}
 }
+
+func TestBuffer_Append(t *testing.T) {
+	b1 := NewBuffer()
+	b2 := NewBuffer()
+
+	b2.WriteInt64(1)
+
+	if err := b1.Append(b2); err != nil {
+		t.Fail()
+	}
+	if n, err := b1.ReadInt64(); err != nil || n != 1 || b2.Len() > 0 {
+		t.Fail()
+	}
+
+	b2.addNode(1024)
+	if err := b1.Append(b2); err != nil {
+		t.Fail()
+	}
+
+	b2.Release()
+	if err := b1.Append(b2); err != ErrBufferReleased {
+		t.Fail()
+	}
+
+	b1.Release()
+	if err := b1.Append(NewBuffer()); err != ErrBufferReleased {
+		t.Fail()
+	}
+}

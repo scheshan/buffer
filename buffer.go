@@ -275,6 +275,32 @@ func (t *Buffer) WriteString(s string) error {
 	return t.WriteBytes(data)
 }
 
+func (t *Buffer) Append(b *Buffer) error {
+	if err := b.checkRead(b.Len()); err != nil {
+		return err
+	}
+	if err := t.checkWrite(b.Len()); err != nil {
+		return err
+	}
+
+	h := b.head
+	for h != nil {
+		n := h.next
+		if h.len() > 0 {
+			t.addTail(h)
+			t.size += h.len()
+		} else {
+			h.release()
+		}
+		h = n
+	}
+
+	b.head = nil
+	b.tail = nil
+	b.size = 0
+	return nil
+}
+
 //#endregion
 
 //#region public methods
@@ -346,6 +372,7 @@ func (t *Buffer) addTail(node *node) {
 		t.tail.next = node
 		t.tail = node
 	}
+	node.next = nil
 }
 
 func (t *Buffer) addNode(size int) {
