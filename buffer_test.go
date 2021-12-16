@@ -1,6 +1,8 @@
 package buffer
 
 import (
+	"golang.org/x/sys/unix"
+	"os"
 	"testing"
 )
 
@@ -298,4 +300,42 @@ func TestBuffer_Release(t *testing.T) {
 	if buf.Ref() != 0 {
 		t.Fail()
 	}
+}
+
+func TestBuffer_CopyToFile(t *testing.T) {
+	path := "/Users/heshan/tmp/test"
+	os.Remove(path)
+
+	f, err := os.Create(path)
+	if err != nil {
+		t.Fail()
+	}
+	fd := int(f.Fd())
+
+	buf := NewBuffer()
+	buf.WriteInt64(1)
+
+	if n, err, complete := buf.CopyToFile(fd); err != nil || !complete || n != 8 {
+		t.Fail()
+	}
+	if _, err, _ := buf.CopyToFile(fd); err != ErrBufferNotEnough {
+		t.Fail()
+	}
+	unix.Close(fd)
+
+	f, err = os.Open(path)
+	if err != nil {
+		t.Fail()
+	}
+	fd = int(f.Fd())
+	buf = NewBuffer()
+	if n, err, complete := buf.CopyFromFile(fd); err != nil || !complete || n != 8 {
+		t.Fail()
+	}
+
+	if n, err := buf.ReadInt64(); err != nil || n != 1 {
+		t.Fail()
+	}
+
+	os.Remove(path)
 }

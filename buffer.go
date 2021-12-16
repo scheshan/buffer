@@ -2,6 +2,7 @@ package buffer
 
 import (
 	"errors"
+	"golang.org/x/sys/unix"
 	"sync"
 )
 
@@ -99,6 +100,24 @@ func (t *Buffer) ReadUInt() (int, error) {
 	return int(n), err
 }
 
+func (t *Buffer) CopyToFile(fd int) (n int, err error, complete bool) {
+	if err := t.checkLen(1); err != nil {
+		return 0, err, false
+	}
+
+	n, err = unix.Write(fd, t.tail.b[t.tail.r:t.tail.w])
+	if n > 0 {
+		t.tail.r += n
+		t.size -= n
+
+		t.releaseHead()
+	}
+
+	complete = t.Len() == 0
+
+	return
+}
+
 //#endregion
 
 //#region write methods
@@ -173,6 +192,22 @@ func (t *Buffer) WriteInt(n int) error {
 
 func (t *Buffer) WriteUInt(n uint) error {
 	return t.WriteUInt64(uint64(n))
+}
+
+func (t *Buffer) CopyFromFile(fd int) (n int, err error, complete bool) {
+	if t.tail == nil || t.tail.cap() == 0 {
+		t.addNode(t.minSize)
+	}
+
+	n, err = unix.Read(fd, t.tail.b[t.tail.w:])
+	if n > 0 {
+		t.tail.w += n
+		t.size += n
+	}
+
+	complete = t.tail.cap() > 0
+
+	return
 }
 
 //#endregion
