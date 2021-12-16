@@ -3,7 +3,9 @@ package buffer
 import (
 	"errors"
 	"golang.org/x/sys/unix"
+	"reflect"
 	"sync"
+	"unsafe"
 )
 
 var (
@@ -138,6 +140,15 @@ func (t *Buffer) ReadBytes(n int) ([]byte, error) {
 	return res, nil
 }
 
+func (t *Buffer) ReadString(n int) (string, error) {
+	data, err := t.ReadBytes(n)
+	if err != nil {
+		return "", err
+	}
+
+	return t.bytesToString(data), nil
+}
+
 //#endregion
 
 //#region write methods
@@ -254,6 +265,11 @@ func (t *Buffer) WriteBytes(data []byte) error {
 	t.size += len(data)
 
 	return nil
+}
+
+func (t *Buffer) WriteString(s string) error {
+	data := t.stringToBytes(s)
+	return t.WriteBytes(data)
 }
 
 //#endregion
@@ -487,6 +503,19 @@ func (t *Buffer) releaseHead() {
 	if t.head == nil {
 		t.tail = nil
 	}
+}
+
+func (t *Buffer) stringToBytes(s string) (data []byte) {
+	p := unsafe.Pointer((*reflect.StringHeader)(unsafe.Pointer(&s)).Data)
+	hdr := (*reflect.SliceHeader)(unsafe.Pointer(&data))
+	hdr.Data = uintptr(p)
+	hdr.Cap = len(s)
+	hdr.Len = len(s)
+	return data
+}
+
+func (t *Buffer) bytesToString(data []byte) (s string) {
+	return *(*string)(unsafe.Pointer(&data))
 }
 
 //#endregion

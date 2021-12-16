@@ -370,3 +370,20 @@ func TestBuffer_WriteBytes(t *testing.T) {
 		t.Fail()
 	}
 }
+
+func TestBuffer_WriteString(t *testing.T) {
+	str := "hello world"
+
+	buf := NewBufferSize(1)
+	if err := buf.WriteString(str); err != nil {
+		t.Fail()
+	}
+
+	if str2, err := buf.ReadString(len(str)); err != nil || str2 != str {
+		t.Fail()
+	}
+
+	if _, err := buf.ReadString(1); err != ErrBufferNotEnough {
+		t.Fail()
+	}
+}
