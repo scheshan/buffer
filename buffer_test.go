@@ -282,10 +282,10 @@ func TestBuffer_Release(t *testing.T) {
 	if err := buf.WriteBytes([]byte{1}); err != ErrBufferReleased {
 		t.Fail()
 	}
-	if _, err, _ := buf.CopyFromFile(3); err != ErrBufferReleased {
+	if _, err := buf.CopyFromFile(3); err != ErrBufferReleased {
 		t.Fail()
 	}
-	if _, err, _ := buf.CopyToFile(3); err != ErrBufferReleased {
+	if _, err := buf.CopyToFile(3); err != ErrBufferReleased {
 		t.Fail()
 	}
 }
@@ -296,33 +296,33 @@ func TestBuffer_CopyToFile(t *testing.T) {
 
 	f, err := os.Create(path)
 	if err != nil {
-		t.Fail()
+		t.FailNow()
 	}
 	fd := int(f.Fd())
 
 	buf := NewBuffer()
 	buf.WriteInt64(1)
 
-	if n, err, complete := buf.CopyToFile(fd); err != nil || !complete || n != 8 {
-		t.Fail()
+	if n, err := buf.CopyToFile(fd); err != nil || n != 8 {
+		t.FailNow()
 	}
-	if _, err, _ := buf.CopyToFile(fd); err != ErrBufferNotEnough {
-		t.Fail()
+	if _, err := buf.CopyToFile(fd); err != ErrBufferNotEnough {
+		t.FailNow()
 	}
 	unix.Close(fd)
 
 	f, err = os.Open(path)
 	if err != nil {
-		t.Fail()
+		t.FailNow()
 	}
 	fd = int(f.Fd())
 	buf = NewBuffer()
-	if n, err, complete := buf.CopyFromFile(fd); err != nil || !complete || n != 8 {
-		t.Fail()
+	if n, err := buf.CopyFromFile(fd); err != nil || n != 8 {
+		t.FailNow()
 	}
 
 	if n, err := buf.ReadInt64(); err != nil || n != 1 {
-		t.Fail()
+		t.FailNow()
 	}
 
 	os.Remove(path)
@@ -398,5 +398,22 @@ func TestBuffer_Append(t *testing.T) {
 	b1.Release()
 	if err := b1.Append(NewBuffer()); err != ErrBufferReleased {
 		t.Fail()
+	}
+}
+
+func TestBuffer_Skip(t *testing.T) {
+	buf := NewBuffer()
+
+	if err := buf.Skip(1); err != ErrBufferNotEnough {
+		t.FailNow()
+	}
+
+	buf.WriteString(" hello")
+	if err := buf.Skip(1); err != nil {
+		t.FailNow()
+	}
+
+	if str, err := buf.ReadString(5); err != nil || str != "hello" {
+		t.FailNow()
 	}
 }

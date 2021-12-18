@@ -100,24 +100,6 @@ func (t *Buffer) ReadUInt() (int, error) {
 	return int(n), err
 }
 
-func (t *Buffer) CopyToFile(fd int) (n int, err error, complete bool) {
-	if err := t.checkRead(1); err != nil {
-		return 0, err, false
-	}
-
-	n, err = unix.Write(fd, t.tail.b[t.tail.r:t.tail.w])
-	if n > 0 {
-		t.tail.r += n
-		t.size -= n
-
-		t.releaseHead()
-	}
-
-	complete = t.Len() == 0
-
-	return
-}
-
 func (t *Buffer) ReadBytes(n int) ([]byte, error) {
 	if err := t.checkRead(n); err != nil {
 		return nil, err
@@ -224,9 +206,9 @@ func (t *Buffer) WriteUInt(n uint) error {
 	return t.WriteUInt64(uint64(n))
 }
 
-func (t *Buffer) CopyFromFile(fd int) (n int, err error, complete bool) {
+func (t *Buffer) CopyFromFile(fd int) (n int, err error) {
 	if t.ref == 0 {
-		return 0, ErrBufferReleased, false
+		return 0, ErrBufferReleased
 	}
 
 	if t.tail == nil || t.tail.cap() == 0 {
@@ -238,8 +220,6 @@ func (t *Buffer) CopyFromFile(fd int) (n int, err error, complete bool) {
 		t.tail.w += n
 		t.size += n
 	}
-
-	complete = t.tail.cap() > 0
 
 	return
 }
@@ -337,6 +317,26 @@ func (t *Buffer) Release() error {
 	t.size = 0
 	t.minSize = 0
 	bufferPool.Put(t)
+
+	return nil
+}
+
+func (t *Buffer) Skip(n int) error {
+	if err := t.checkRead(n); err != nil {
+		return err
+	}
+
+	for n > 0 {
+		cn := t.head.w - t.head.r
+		if cn > n {
+			cn = n
+		}
+		t.head.r += cn
+		n -= cn
+		t.size -= cn
+
+		t.releaseHead()
+	}
 
 	return nil
 }
