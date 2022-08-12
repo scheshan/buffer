@@ -409,3 +409,17 @@ func Test_BufferFindByte(t *testing.T) {
 		t.Fail()
 	}
 }
+
+func Test_BufferGetBytes(t *testing.T) {
+	buf := New(1000000)
+
+	buf.WriteBytes([]byte{1, 2, 3, 4, 5, 6, 7, 8, 9})
+
+	data, err := buf.GetBytes(3, 5)
+	if err != nil {
+		t.Fail()
+	}
+	if data[0] != 4 || data[4] != 8 {
+		t.Fail()
+	}
+}

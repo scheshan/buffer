@@ -96,12 +96,11 @@ func (t *Buffer) ReadBool() (bool, error) {
 }
 
 func (t *Buffer) ReadUInt8() (uint8, error) {
-	if err := t.ensureReadable(1); err != nil {
-		return 0, err
+	n, err := t.GetUInt8(0)
+	if err == nil {
+		t.skip(1)
 	}
-
-	defer t.skip(1)
-	return t.getUInt8(0), nil
+	return n, err
 }
 
 func (t *Buffer) ReadInt8() (int8, error) {
@@ -114,12 +113,11 @@ func (t *Buffer) ReadByte() (byte, error) {
 }
 
 func (t *Buffer) ReadUInt16() (uint16, error) {
-	if err := t.ensureReadable(2); err != nil {
-		return 0, err
+	n, err := t.GetUInt16(0)
+	if err == nil {
+		t.skip(2)
 	}
-
-	defer t.skip(1)
-	return t.getUInt16(0), nil
+	return n, err
 }
 
 func (t *Buffer) ReadInt16() (int16, error) {
@@ -128,12 +126,11 @@ func (t *Buffer) ReadInt16() (int16, error) {
 }
 
 func (t *Buffer) ReadUInt32() (uint32, error) {
-	if err := t.ensureReadable(4); err != nil {
-		return 0, err
+	n, err := t.GetUInt32(0)
+	if err == nil {
+		t.skip(4)
 	}
-
-	defer t.skip(4)
-	return t.getUInt32(0), nil
+	return n, err
 }
 
 func (t *Buffer) ReadInt32() (int32, error) {
@@ -142,12 +139,11 @@ func (t *Buffer) ReadInt32() (int32, error) {
 }
 
 func (t *Buffer) ReadUInt64() (uint64, error) {
-	if err := t.ensureReadable(8); err != nil {
-		return 0, err
+	n, err := t.GetUInt64(0)
+	if err == nil {
+		t.skip(4)
 	}
-
-	defer t.skip(8)
-	return t.getUInt64(0), nil
+	return n, err
 }
 
 func (t *Buffer) ReadInt64() (int64, error) {
@@ -186,6 +182,17 @@ func (t *Buffer) FindByte(ind int, b byte) (int, bool, error) {
 	}
 
 	return -1, false, nil
+}
+
+func (t *Buffer) GetBytes(idx int, size int) ([]byte, error) {
+	if err := t.ensureReadable(idx); err != nil {
+		return nil, err
+	}
+	if err := t.ensureReadable(idx + size); err != nil {
+		return nil, err
+	}
+
+	return t.getBytes(idx, size), nil
 }
 
 func (t *Buffer) Len() int {
@@ -517,6 +524,22 @@ func (t *Buffer) getUInt64(idx int) uint64 {
 	} else {
 		return (uint64(t.getUInt32(idx)) << 32) | uint64(t.getUInt16(idx+4))
 	}
+}
+
+func (t *Buffer) getBytes(idx int, size int) []byte {
+	res := make([]byte, size)
+
+	i, ni := t.getNode(idx)
+	ri := 0
+	for ri < size {
+		no := t.nodes[i]
+		ri += copy(res[ri:], no.buf[ni:no.w])
+
+		i++
+		ni = 0
+	}
+
+	return res
 }
 
 func (t *Buffer) getNode(idx int) (int, int) {
