@@ -19,11 +19,11 @@ func (t *node) Cap() int {
 	return len(t.buf)
 }
 
-func (t *node) Len() int {
+func (t *node) ReadableBytes() int {
 	return t.w - t.r
 }
 
-func (t *node) Available() int {
+func (t *node) WritableBytes() int {
 	return t.Cap() - t.w
 }
 
