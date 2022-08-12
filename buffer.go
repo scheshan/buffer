@@ -340,6 +340,14 @@ func (t *Buffer) WriteUInt(n uint) error {
 	return t.WriteUInt64(uint64(n))
 }
 
+func (t *Buffer) Write(p []byte) (int, error) {
+	if err := t.WriteBytes(p); err != nil {
+		return 0, err
+	}
+
+	return len(p), nil
+}
+
 //#endregion
 
 func (t *Buffer) addNodeToArray(n *node) {
