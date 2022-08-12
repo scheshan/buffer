@@ -390,6 +390,9 @@ func (t *Buffer) reader() *node {
 }
 
 func (t *Buffer) ensureReadable(size int) error {
+	if size < 0 {
+		panic("invalid argument")
+	}
 	if t.size < size {
 		return ErrNoEnoughData
 	}
