@@ -20,11 +20,8 @@ type Buffer struct {
 //#region read logic
 
 func (t *Buffer) ReadBool() (bool, error) {
-	if err := t.ensureReadable(1); err != nil {
-		return false, err
-	}
-
-	return t.readUInt8() != 0, nil
+	res, err := t.ReadUInt8()
+	return res != 0, err
 }
 
 func (t *Buffer) ReadUInt8() (uint8, error) {
@@ -32,7 +29,8 @@ func (t *Buffer) ReadUInt8() (uint8, error) {
 		return 0, err
 	}
 
-	return t.readUInt8(), nil
+	defer t.skip(1)
+	return t.getUInt8(0), nil
 }
 
 func (t *Buffer) ReadInt8() (int8, error) {
@@ -49,7 +47,8 @@ func (t *Buffer) ReadUInt16() (uint16, error) {
 		return 0, err
 	}
 
-	return t.readUInt16(), nil
+	defer t.skip(1)
+	return t.getUInt16(0), nil
 }
 
 func (t *Buffer) ReadInt16() (int16, error) {
@@ -62,7 +61,8 @@ func (t *Buffer) ReadUInt32() (uint32, error) {
 		return 0, err
 	}
 
-	return t.readUInt32(), nil
+	defer t.skip(4)
+	return t.getUInt32(0), nil
 }
 
 func (t *Buffer) ReadInt32() (int32, error) {
@@ -75,7 +75,8 @@ func (t *Buffer) ReadUInt64() (uint64, error) {
 		return 0, err
 	}
 
-	return t.readUInt64(), nil
+	defer t.skip(8)
+	return t.getUInt64(0), nil
 }
 
 func (t *Buffer) ReadInt64() (int64, error) {
@@ -280,30 +281,6 @@ func (t *Buffer) ensureReadable(size int) error {
 		return ErrNoEnoughData
 	}
 	return nil
-}
-
-func (t *Buffer) readUInt8() uint8 {
-	defer t.skip(1)
-
-	return t.getUInt8(0)
-}
-
-func (t *Buffer) readUInt16() uint16 {
-	defer t.skip(2)
-
-	return t.getUInt16(0)
-}
-
-func (t *Buffer) readUInt32() uint32 {
-	defer t.skip(4)
-
-	return t.getUInt32(0)
-}
-
-func (t *Buffer) readUInt64() uint64 {
-	defer t.skip(8)
-
-	return t.getUInt64(0)
 }
 
 func (t *Buffer) writeUInt8(n uint8) {
