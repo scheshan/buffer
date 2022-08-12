@@ -250,52 +250,23 @@ func TestBuffer_HalfReadWrite(t *testing.T) {
 	}
 }
 
-//func TestBuffer_Release(t *testing.T) {
-//	buf := New(1000000)
-//
-//	buf.WriteInt64(1)
-//
-//	if buf.Ref() != 1 {
-//		t.Fail()
-//	}
-//
-//	buf.IncrRef()
-//	if buf.Ref() != 2 {
-//		t.Fail()
-//	}
-//
-//	buf.Release()
-//	buf.Release()
-//	if buf.Ref() != 0 {
-//		t.Fail()
-//	}
-//
-//	if err := buf.Release(); err != ErrBufferReleased || buf.Ref() != 0 {
-//		t.Fail()
-//	}
-//	if err := buf.WriteUInt8(1); err != ErrBufferReleased {
-//		t.Fail()
-//	}
-//	if err := buf.WriteUInt16(1); err != ErrBufferReleased {
-//		t.Fail()
-//	}
-//	if err := buf.WriteUInt32(1); err != ErrBufferReleased {
-//		t.Fail()
-//	}
-//	if err := buf.WriteUInt64(1); err != ErrBufferReleased {
-//		t.Fail()
-//	}
-//	if err := buf.WriteBytes([]byte{1}); err != ErrBufferReleased {
-//		t.Fail()
-//	}
-//	if _, err := buf.CopyFromFile(3); err != ErrBufferReleased {
-//		t.Fail()
-//	}
-//	if _, err := buf.CopyToFile(3); err != ErrBufferReleased {
-//		t.Fail()
-//	}
-//}
-//
+func TestBuffer_Release(t *testing.T) {
+	buf := New(1000000)
+
+	buf.WriteInt64(1)
+
+	buf.Release()
+	if buf.nodes != nil {
+		t.Fail()
+	}
+	if buf.nc != 0 {
+		t.Fail()
+	}
+	if buf.size != 0 {
+		t.Fail()
+	}
+}
+
 //func TestBuffer_CopyToFile(t *testing.T) {
 //	path := "/Users/heshan/tmp/test"
 //	os.Remove(path)
@@ -334,33 +305,33 @@ func TestBuffer_HalfReadWrite(t *testing.T) {
 //	os.Remove(path)
 //}
 //
-//func TestBuffer_WriteBytes(t *testing.T) {
-//	buf := NewBufferSize(4)
-//	buf.WriteByte(1)
-//
-//	data := []byte{1, 2, 3, 4}
-//	buf.WriteBytes(data)
-//
-//	if _, err := buf.ReadByte(); err != nil {
-//		t.Fail()
-//	}
-//	d2, err := buf.ReadBytes(4)
-//	if err != nil {
-//		t.Fail()
-//	}
-//	if len(d2) != 4 || d2[0] != 1 || d2[1] != 2 || d2[2] != 3 || d2[3] != 4 {
-//		t.Fail()
-//	}
-//
-//	if _, err := buf.ReadBytes(1); err != ErrBufferNotEnough {
-//		t.Fail()
-//	}
-//
-//	if err := buf.WriteBytes(nil); err != nil {
-//		t.Fail()
-//	}
-//}
-//
+func TestBuffer_WriteBytes(t *testing.T) {
+	buf := New(1000000)
+	buf.WriteByte(1)
+
+	data := []byte{1, 2, 3, 4}
+	buf.WriteBytes(data)
+
+	if _, err := buf.ReadByte(); err != nil {
+		t.Fail()
+	}
+	d2, err := buf.ReadBytes(4)
+	if err != nil {
+		t.Fail()
+	}
+	if len(d2) != 4 || d2[0] != 1 || d2[1] != 2 || d2[2] != 3 || d2[3] != 4 {
+		t.Fail()
+	}
+
+	if _, err := buf.ReadBytes(1); err != ErrNoEnoughData {
+		t.Fail()
+	}
+
+	if err := buf.WriteBytes(nil); err != nil {
+		t.Fail()
+	}
+}
+
 //func TestBuffer_WriteString(t *testing.T) {
 //	str := "hello world"
 //

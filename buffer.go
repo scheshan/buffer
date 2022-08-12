@@ -223,19 +223,6 @@ func (t *Buffer) Read(p []byte) (n int, err error) {
 	return n, nil
 }
 
-func (t *Buffer) Len() int {
-	return t.size
-}
-
-func (t *Buffer) Skip(n int) error {
-	if err := t.ensureReadable(n); err != nil {
-		return err
-	}
-
-	t.skip(n)
-	return nil
-}
-
 //#endregion
 
 //#region write logic
@@ -346,6 +333,34 @@ func (t *Buffer) Write(p []byte) (int, error) {
 	}
 
 	return len(p), nil
+}
+
+//#endregion
+
+//#region common logic
+
+func (t *Buffer) Len() int {
+	return t.size
+}
+
+func (t *Buffer) Skip(n int) error {
+	if err := t.ensureReadable(n); err != nil {
+		return err
+	}
+
+	t.skip(n)
+	return nil
+}
+
+func (t *Buffer) Release() {
+	if t.nodes != nil {
+		for _, n := range t.nodes {
+			n.Release()
+		}
+		t.nodes = nil
+	}
+	t.nc = 0
+	t.size = 0
 }
 
 //#endregion
