@@ -193,37 +193,37 @@ func TestBuffer_WriteInt64(t *testing.T) {
 	}
 }
 
-//func TestBuffer_WriteUInt(t *testing.T) {
-//	buf := New(1000000)
-//
-//	if err := buf.WriteUInt(1); err != nil {
-//		t.Fail()
-//	}
-//
-//	if n, err := buf.ReadUInt(); err != nil || n != 1 {
-//		t.Fail()
-//	}
-//
-//	if _, err := buf.ReadUInt(); err != ErrBufferNotEnough {
-//		t.Fail()
-//	}
-//}
-//
-//func TestBuffer_WriteInt(t *testing.T) {
-//	buf := New(1000000)
-//
-//	if err := buf.WriteInt(1); err != nil {
-//		t.Fail()
-//	}
-//
-//	if n, err := buf.ReadInt(); err != nil || n != 1 {
-//		t.Fail()
-//	}
-//
-//	if _, err := buf.ReadInt(); err != ErrBufferNotEnough {
-//		t.Fail()
-//	}
-//}
+func TestBuffer_WriteUInt(t *testing.T) {
+	buf := New(1000000)
+
+	if err := buf.WriteUInt(1); err != nil {
+		t.Fail()
+	}
+
+	if n, err := buf.ReadUInt(); err != nil || n != 1 {
+		t.Fail()
+	}
+
+	if _, err := buf.ReadUInt(); err != ErrNoEnoughData {
+		t.Fail()
+	}
+}
+
+func TestBuffer_WriteInt(t *testing.T) {
+	buf := New(1000000)
+
+	if err := buf.WriteInt(1); err != nil {
+		t.Fail()
+	}
+
+	if n, err := buf.ReadInt(); err != nil || n != 1 {
+		t.Fail()
+	}
+
+	if _, err := buf.ReadInt(); err != ErrNoEnoughData {
+		t.Fail()
+	}
+}
 
 //func TestBuffer_HalfReadWrite(t *testing.T) {
 //	buf := NewBufferSize(1)
@@ -377,19 +377,35 @@ func TestBuffer_WriteInt64(t *testing.T) {
 //	}
 //}
 //
-//func TestBuffer_Skip(t *testing.T) {
-//	buf := New(1000000)
-//
-//	if err := buf.Skip(1); err != ErrBufferNotEnough {
-//		t.FailNow()
-//	}
-//
-//	buf.WriteString(" hello")
-//	if err := buf.Skip(1); err != nil {
-//		t.FailNow()
-//	}
-//
-//	if str, err := buf.ReadString(5); err != nil || str != "hello" {
-//		t.FailNow()
-//	}
-//}
+func TestBuffer_Skip(t *testing.T) {
+	buf := New(1000000)
+
+	if err := buf.Skip(1); err != ErrNoEnoughData {
+		t.FailNow()
+	}
+
+	buf.WriteByte(0)
+	buf.WriteUInt32(100)
+
+	if err := buf.Skip(1); err != nil {
+		t.FailNow()
+	}
+
+	if n, err := buf.ReadUInt32(); err != nil || n != 100 {
+		t.FailNow()
+	}
+}
+
+func Test_BufferFindByte(t *testing.T) {
+	buf := New(1000000)
+
+	buf.WriteBytes([]byte{1, 2, 3, 4, 5, 6, 7, 8, 9})
+
+	if ind, ok, err := buf.FindByte(0, 5); !ok || err != nil || ind != 4 {
+		t.Fail()
+	}
+
+	if ind, ok, err := buf.FindByte(8, 5); ok || err != nil || ind != -1 {
+		t.Fail()
+	}
+}

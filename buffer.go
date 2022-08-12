@@ -19,6 +19,77 @@ type Buffer struct {
 
 //#region read logic
 
+func (t *Buffer) GetBool(idx int) (bool, error) {
+	res, err := t.GetUInt8(idx)
+	return res != 0, err
+}
+
+func (t *Buffer) GetUInt8(idx int) (uint8, error) {
+	if err := t.ensureReadable(1); err != nil {
+		return 0, err
+	}
+
+	return t.getUInt8(idx), nil
+}
+
+func (t *Buffer) GetInt8(idx int) (int8, error) {
+	res, err := t.GetUInt8(idx)
+	return int8(res), err
+}
+
+func (t *Buffer) GetByte(idx int) (byte, error) {
+	return t.GetUInt8(idx)
+}
+
+func (t *Buffer) GetUInt16(idx int) (uint16, error) {
+	if err := t.ensureReadable(2); err != nil {
+		return 0, err
+	}
+
+	return t.getUInt16(idx), nil
+}
+
+func (t *Buffer) GetInt16(idx int) (int16, error) {
+	res, err := t.GetUInt16(idx)
+	return int16(res), err
+}
+
+func (t *Buffer) GetUInt32(idx int) (uint32, error) {
+	if err := t.ensureReadable(4); err != nil {
+		return 0, err
+	}
+
+	return t.getUInt32(idx), nil
+}
+
+func (t *Buffer) GetInt32(idx int) (int32, error) {
+	res, err := t.GetUInt32(idx)
+	return int32(res), err
+}
+
+func (t *Buffer) GetUInt64(idx int) (uint64, error) {
+	if err := t.ensureReadable(8); err != nil {
+		return 0, err
+	}
+
+	return t.getUInt64(idx), nil
+}
+
+func (t *Buffer) GetInt64(idx int) (int64, error) {
+	res, err := t.GetUInt64(idx)
+	return int64(res), err
+}
+
+func (t *Buffer) GetUInt(idx int) (uint, error) {
+	res, err := t.GetUInt64(idx)
+	return uint(res), err
+}
+
+func (t *Buffer) GetInt(idx int) (int, error) {
+	res, err := t.GetInt64(idx)
+	return int(res), err
+}
+
 func (t *Buffer) ReadBool() (bool, error) {
 	res, err := t.ReadUInt8()
 	return res != 0, err
@@ -84,8 +155,50 @@ func (t *Buffer) ReadInt64() (int64, error) {
 	return int64(res), err
 }
 
+func (t *Buffer) ReadUInt() (uint, error) {
+	res, err := t.ReadUInt64()
+	return uint(res), err
+}
+
+func (t *Buffer) ReadInt() (int, error) {
+	res, err := t.ReadInt64()
+	return int(res), err
+}
+
+func (t *Buffer) FindByte(ind int, b byte) (int, bool, error) {
+	if err := t.ensureReadable(ind); err != nil {
+		return -1, false, err
+	}
+
+	i, ni := t.getNode(ind)
+	for ind < t.size {
+		if ni < t.nodes[i].w {
+			if t.nodes[i].buf[ni] == b {
+				return ind, true, nil
+			}
+
+			ni++
+			ind++
+		} else {
+			i++
+			ni = 0
+		}
+	}
+
+	return -1, false, nil
+}
+
 func (t *Buffer) Len() int {
 	return t.size
+}
+
+func (t *Buffer) Skip(n int) error {
+	if err := t.ensureReadable(n); err != nil {
+		return err
+	}
+
+	t.skip(n)
+	return nil
 }
 
 //#endregion
@@ -363,13 +476,13 @@ func (t *Buffer) skip(n int) {
 
 func (t *Buffer) getUInt8(idx int) uint8 {
 	n, i := t.getNode(idx)
-	return n.buf[i]
+	return t.nodes[n].buf[i]
 }
 
 func (t *Buffer) getUInt16(idx int) uint16 {
 	n, i := t.getNode(idx)
-	if i <= n.Cap()-2 {
-		return (uint16(n.buf[i]) << 8) | uint16(n.buf[i+1])
+	if i <= t.nodes[n].Cap()-2 {
+		return (uint16(t.nodes[n].buf[i]) << 8) | uint16(t.nodes[n].buf[i+1])
 	} else {
 		return (uint16(t.getUInt8(idx)) << 8) | uint16(t.getUInt8(idx+1))
 	}
@@ -377,11 +490,11 @@ func (t *Buffer) getUInt16(idx int) uint16 {
 
 func (t *Buffer) getUInt32(idx int) uint32 {
 	n, i := t.getNode(idx)
-	if i <= n.Cap()-4 {
-		return (uint32(n.buf[i]) << 24) |
-			(uint32(n.buf[i+1]) << 16) |
-			(uint32(n.buf[i+2]) << 8) |
-			uint32(n.buf[i+3])
+	if i <= t.nodes[n].Cap()-4 {
+		return (uint32(t.nodes[n].buf[i]) << 24) |
+			(uint32(t.nodes[n].buf[i+1]) << 16) |
+			(uint32(t.nodes[n].buf[i+2]) << 8) |
+			uint32(t.nodes[n].buf[i+3])
 	} else {
 		return (uint32(t.getUInt16(idx)) << 16) | uint32(t.getUInt16(idx+2))
 	}
@@ -389,21 +502,21 @@ func (t *Buffer) getUInt32(idx int) uint32 {
 
 func (t *Buffer) getUInt64(idx int) uint64 {
 	n, i := t.getNode(idx)
-	if i <= n.Cap()-8 {
-		return (uint64(n.buf[i]) << 56) |
-			(uint64(n.buf[i+1]) << 48) |
-			(uint64(n.buf[i+2]) << 40) |
-			(uint64(n.buf[i+3]) << 32) |
-			(uint64(n.buf[i+4]) << 24) |
-			(uint64(n.buf[i+5]) << 16) |
-			(uint64(n.buf[i+6]) << 8) |
-			uint64(n.buf[i+7])
+	if i <= t.nodes[n].Cap()-8 {
+		return (uint64(t.nodes[n].buf[i]) << 56) |
+			(uint64(t.nodes[n].buf[i+1]) << 48) |
+			(uint64(t.nodes[n].buf[i+2]) << 40) |
+			(uint64(t.nodes[n].buf[i+3]) << 32) |
+			(uint64(t.nodes[n].buf[i+4]) << 24) |
+			(uint64(t.nodes[n].buf[i+5]) << 16) |
+			(uint64(t.nodes[n].buf[i+6]) << 8) |
+			uint64(t.nodes[n].buf[i+7])
 	} else {
 		return (uint64(t.getUInt32(idx)) << 32) | uint64(t.getUInt16(idx+4))
 	}
 }
 
-func (t *Buffer) getNode(idx int) (*node, int) {
+func (t *Buffer) getNode(idx int) (int, int) {
 	l, r := 0, t.nc
 	var m int
 	for l < r {
@@ -415,11 +528,11 @@ func (t *Buffer) getNode(idx int) (*node, int) {
 		} else if n.adj+n.ReadableBytes() < idx {
 			l = l << 1
 		} else {
-			return n, idx - n.adj + n.r
+			return m, idx - n.adj + n.r
 		}
 	}
 
-	return nil, -1
+	return -1, -1
 }
 
 func New(maxSize int) *Buffer {
