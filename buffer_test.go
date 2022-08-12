@@ -423,3 +423,19 @@ func Test_BufferGetBytes(t *testing.T) {
 		t.Fail()
 	}
 }
+
+func Test_BufferRead(t *testing.T) {
+	buf := New(1000000)
+
+	buf.WriteBytes([]byte{1, 2, 3, 4, 5, 6, 7, 8, 9})
+
+	data := make([]byte, 4)
+	n, err := buf.Read(data)
+	if err != nil || n != 4 {
+		t.Fail()
+	}
+
+	if data[0] != 1 || data[3] != 4 {
+		t.Fail()
+	}
+}

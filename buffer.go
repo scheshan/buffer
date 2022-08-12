@@ -195,6 +195,34 @@ func (t *Buffer) GetBytes(idx int, size int) ([]byte, error) {
 	return t.getBytes(idx, size), nil
 }
 
+func (t *Buffer) ReadBytes(size int) ([]byte, error) {
+	data, err := t.GetBytes(0, size)
+	if err == nil {
+		t.skip(size)
+	}
+
+	return data, err
+}
+
+func (t *Buffer) Read(p []byte) (n int, err error) {
+	n = 0
+	i := 0
+
+	for t.size > 0 && n < len(p) {
+		cn := copy(p[n:], t.nodes[0].buf[t.nodes[0].r:t.nodes[0].w])
+
+		n += cn
+		t.nodes[0].r += cn
+		t.size -= cn
+		i++
+	}
+
+	t.shrink()
+	t.adjust()
+
+	return n, nil
+}
+
 func (t *Buffer) Len() int {
 	return t.size
 }
