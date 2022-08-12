@@ -225,29 +225,30 @@ func TestBuffer_WriteInt(t *testing.T) {
 	}
 }
 
-//func TestBuffer_HalfReadWrite(t *testing.T) {
-//	buf := NewBufferSize(1)
-//
-//	if err := buf.WriteInt64(1); err != nil {
-//		t.Fail()
-//	}
-//
-//	if n, err := buf.ReadInt64(); err != nil || n != 1 {
-//		t.Fail()
-//	}
-//
-//	if err := buf.WriteUInt64(1); err != nil {
-//		t.Fail()
-//	}
-//
-//	if n, err := buf.ReadUInt64(); err != nil || n != 1 {
-//		t.Fail()
-//	}
-//
-//	if _, err := buf.ReadInt64(); err != ErrBufferNotEnough {
-//		t.Fail()
-//	}
-//}
+func TestBuffer_HalfReadWrite(t *testing.T) {
+	minNodeSize = 1
+	buf := New(1000000)
+
+	if err := buf.WriteInt64(1); err != nil {
+		t.Fail()
+	}
+
+	if n, err := buf.ReadInt64(); err != nil || n != 1 {
+		t.Fail()
+	}
+
+	if err := buf.WriteUInt64(1); err != nil {
+		t.Fail()
+	}
+
+	if n, err := buf.ReadUInt64(); err != nil || n != 1 {
+		t.Fail()
+	}
+
+	if _, err := buf.ReadInt64(); err != ErrNoEnoughData {
+		t.Fail()
+	}
+}
 
 //func TestBuffer_Release(t *testing.T) {
 //	buf := New(1000000)

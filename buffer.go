@@ -141,7 +141,7 @@ func (t *Buffer) ReadInt32() (int32, error) {
 func (t *Buffer) ReadUInt64() (uint64, error) {
 	n, err := t.GetUInt64(0)
 	if err == nil {
-		t.skip(4)
+		t.skip(8)
 	}
 	return n, err
 }
@@ -355,6 +355,8 @@ func (t *Buffer) addNodeToArray(n *node) {
 
 	t.nodes[t.nc] = n
 	t.nc++
+
+	t.adjust()
 }
 
 func (t *Buffer) expand() {
@@ -383,6 +385,7 @@ func (t *Buffer) shrink() {
 	n := t.nc
 	for r < n {
 		if t.nodes[r].ReadableBytes() <= 0 {
+			t.nodes[r].Release()
 			t.nc--
 		} else {
 			t.nodes[l] = t.nodes[r]
@@ -514,6 +517,7 @@ func (t *Buffer) skip(n int) {
 			no.r = no.w
 			n -= avail
 		}
+		i++
 	}
 
 	t.shrink()
@@ -558,7 +562,7 @@ func (t *Buffer) getUInt64(idx int) uint64 {
 			(uint64(t.nodes[n].buf[i+6]) << 8) |
 			uint64(t.nodes[n].buf[i+7])
 	} else {
-		return (uint64(t.getUInt32(idx)) << 32) | uint64(t.getUInt16(idx+4))
+		return (uint64(t.getUInt32(idx)) << 32) | uint64(t.getUInt32(idx+4))
 	}
 }
 
@@ -582,15 +586,16 @@ func (t *Buffer) getNode(idx int) (int, int) {
 	l, r := 0, t.nc
 	var m int
 	for l < r {
-		m = l + (r >> 1)
+		m = (l >> 1) + (r >> 1)
 
 		n := t.nodes[m]
-		if n.adj > idx {
-			r = r >> 1
-		} else if n.adj+n.ReadableBytes() < idx {
-			l = l << 1
-		} else {
+
+		if n.adj <= idx && n.adj+n.ReadableBytes()-1 >= idx {
 			return m, idx - n.adj + n.r
+		} else if n.adj > idx {
+			r = m
+		} else {
+			l = m + 1
 		}
 	}
 
