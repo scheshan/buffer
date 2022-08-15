@@ -7,14 +7,15 @@ import (
 var (
 	ErrExceedMaximumSize = errors.New("exceed maximum size")
 	ErrNoEnoughData      = errors.New("no enough data to read")
-	minNodeSize          = 2048
+	defaultMinAllocSize  = 2048
 )
 
 type Buffer struct {
-	nodes   []*node
-	nc      int //node count
-	size    int
-	maxSize int
+	nodes        []*node
+	nc           int //node count
+	size         int
+	maxSize      int
+	minAllocSize int
 }
 
 //#region read logic
@@ -462,7 +463,7 @@ func (t *Buffer) ensureReadable(size int) error {
 
 func (t *Buffer) writeUInt8(n uint8) {
 	if t.writer() == nil || t.writer().WritableBytes() < 1 {
-		t.addNodeToArray(newNode(minNodeSize))
+		t.addNodeToArray(newNode(defaultMinAllocSize))
 	}
 
 	t.writer().buf[t.writer().w] = n
@@ -617,9 +618,25 @@ func (t *Buffer) getNode(idx int) (int, int) {
 	return -1, -1
 }
 
-func New(maxSize int) *Buffer {
+func New() *Buffer {
 	buf := &Buffer{
-		maxSize: maxSize,
+		maxSize:      0,
+		minAllocSize: defaultMinAllocSize,
+	}
+	return buf
+}
+
+func NewWithOptions(opt Options) *Buffer {
+	if opt.MaxSize < 0 {
+		panic("MaxSize cannot be negative")
+	}
+	if opt.MinAllocSize <= 0 {
+		panic("MinAllocSize should be positive")
+	}
+
+	buf := &Buffer{
+		maxSize:      opt.MaxSize,
+		minAllocSize: opt.MinAllocSize,
 	}
 	return buf
 }

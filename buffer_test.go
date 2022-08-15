@@ -6,7 +6,7 @@ import (
 )
 
 func TestBuffer_Len(t *testing.T) {
-	buf := New(1000000)
+	buf := New()
 
 	buf.WriteInt64(1)
 	if buf.Len() != 8 {
@@ -20,7 +20,7 @@ func TestBuffer_Len(t *testing.T) {
 }
 
 func TestBuffer_WriteUInt8(t *testing.T) {
-	buf := New(1000000)
+	buf := New()
 
 	if err := buf.WriteUInt8(1); err != nil {
 		t.Fail()
@@ -36,7 +36,7 @@ func TestBuffer_WriteUInt8(t *testing.T) {
 }
 
 func TestBuffer_WriteInt8(t *testing.T) {
-	buf := New(1000000)
+	buf := New()
 
 	if err := buf.WriteInt8(1); err != nil {
 		t.Fail()
@@ -52,7 +52,7 @@ func TestBuffer_WriteInt8(t *testing.T) {
 }
 
 func TestBuffer_WriteBool(t *testing.T) {
-	buf := New(1000000)
+	buf := New()
 
 	if err := buf.WriteBool(true); err != nil {
 		t.Fail()
@@ -76,7 +76,7 @@ func TestBuffer_WriteBool(t *testing.T) {
 }
 
 func TestBuffer_ReadByte(t *testing.T) {
-	buf := New(1000000)
+	buf := New()
 
 	if err := buf.WriteByte(1); err != nil {
 		t.Fail()
@@ -92,7 +92,7 @@ func TestBuffer_ReadByte(t *testing.T) {
 }
 
 func TestBuffer_WriteUInt16(t *testing.T) {
-	buf := New(1000000)
+	buf := New()
 
 	num := uint16(rand.Int())
 
@@ -114,7 +114,7 @@ func TestBuffer_WriteUInt16(t *testing.T) {
 }
 
 func TestBuffer_WriteInt16(t *testing.T) {
-	buf := New(1000000)
+	buf := New()
 
 	if err := buf.WriteInt16(1); err != nil {
 		t.Fail()
@@ -130,7 +130,7 @@ func TestBuffer_WriteInt16(t *testing.T) {
 }
 
 func TestBuffer_WriteUInt32(t *testing.T) {
-	buf := New(1000000)
+	buf := New()
 
 	if err := buf.WriteUInt32(1); err != nil {
 		t.Fail()
@@ -146,7 +146,7 @@ func TestBuffer_WriteUInt32(t *testing.T) {
 }
 
 func TestBuffer_WriteInt32(t *testing.T) {
-	buf := New(1000000)
+	buf := New()
 
 	if err := buf.WriteInt32(1); err != nil {
 		t.Fail()
@@ -162,7 +162,7 @@ func TestBuffer_WriteInt32(t *testing.T) {
 }
 
 func TestBuffer_WriteUInt64(t *testing.T) {
-	buf := New(1000000)
+	buf := New()
 
 	if err := buf.WriteUInt64(1); err != nil {
 		t.Fail()
@@ -178,7 +178,7 @@ func TestBuffer_WriteUInt64(t *testing.T) {
 }
 
 func TestBuffer_WriteInt64(t *testing.T) {
-	buf := New(1000000)
+	buf := New()
 
 	if err := buf.WriteInt64(1); err != nil {
 		t.Fail()
@@ -194,7 +194,7 @@ func TestBuffer_WriteInt64(t *testing.T) {
 }
 
 func TestBuffer_WriteUInt(t *testing.T) {
-	buf := New(1000000)
+	buf := New()
 
 	if err := buf.WriteUInt(1); err != nil {
 		t.Fail()
@@ -210,7 +210,7 @@ func TestBuffer_WriteUInt(t *testing.T) {
 }
 
 func TestBuffer_WriteInt(t *testing.T) {
-	buf := New(1000000)
+	buf := New()
 
 	if err := buf.WriteInt(1); err != nil {
 		t.Fail()
@@ -226,8 +226,8 @@ func TestBuffer_WriteInt(t *testing.T) {
 }
 
 func TestBuffer_HalfReadWrite(t *testing.T) {
-	minNodeSize = 1
-	buf := New(1000000)
+	defaultMinAllocSize = 1
+	buf := New()
 
 	if err := buf.WriteInt64(1); err != nil {
 		t.Fail()
@@ -251,7 +251,7 @@ func TestBuffer_HalfReadWrite(t *testing.T) {
 }
 
 func TestBuffer_Release(t *testing.T) {
-	buf := New(1000000)
+	buf := New()
 
 	buf.WriteInt64(1)
 
@@ -306,7 +306,7 @@ func TestBuffer_Release(t *testing.T) {
 //}
 //
 func TestBuffer_WriteBytes(t *testing.T) {
-	buf := New(1000000)
+	buf := New()
 	buf.WriteByte(1)
 
 	data := []byte{1, 2, 3, 4}
@@ -350,7 +350,7 @@ func TestBuffer_WriteBytes(t *testing.T) {
 //}
 //
 func TestBuffer_Skip(t *testing.T) {
-	buf := New(1000000)
+	buf := New()
 
 	if err := buf.Skip(1); err != ErrNoEnoughData {
 		t.FailNow()
@@ -369,7 +369,7 @@ func TestBuffer_Skip(t *testing.T) {
 }
 
 func Test_BufferFindByte(t *testing.T) {
-	buf := New(1000000)
+	buf := New()
 
 	buf.WriteBytes([]byte{1, 2, 3, 4, 5, 6, 7, 8, 9})
 
@@ -383,7 +383,7 @@ func Test_BufferFindByte(t *testing.T) {
 }
 
 func Test_BufferGetBytes(t *testing.T) {
-	buf := New(1000000)
+	buf := New()
 
 	buf.WriteBytes([]byte{1, 2, 3, 4, 5, 6, 7, 8, 9})
 
@@ -397,7 +397,7 @@ func Test_BufferGetBytes(t *testing.T) {
 }
 
 func Test_BufferRead(t *testing.T) {
-	buf := New(1000000)
+	buf := New()
 
 	buf.WriteBytes([]byte{1, 2, 3, 4, 5, 6, 7, 8, 9})
 
