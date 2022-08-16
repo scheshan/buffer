@@ -2,6 +2,7 @@ package buffer
 
 import (
 	"errors"
+	"syscall"
 )
 
 var (
@@ -260,7 +261,7 @@ func (t *Buffer) WriteBytes(b []byte) error {
 	}
 	node := newNode(s)
 	node.w += copy(node.buf, b)
-	t.addNodeToArray(node)
+	t.addNode(node)
 	t.size += node.w
 	return nil
 }
@@ -350,6 +351,33 @@ func (t *Buffer) Write(p []byte) (int, error) {
 	return len(p), nil
 }
 
+func (t *Buffer) WriteFromFd(fd int) (int, error) {
+	if err := t.ensureWriteable(1); err != nil {
+		return 0, err
+	}
+
+	if t.nodes == nil || t.nc == 0 || t.nodes[len(t.nodes)-1].WritableBytes() == 0 {
+		size := t.minAllocSize
+		if t.maxSize > 0 && t.maxSize-t.size < t.minAllocSize {
+			size = t.maxSize - t.size
+		}
+
+		t.addNode(newNode(size))
+	}
+
+	tail := t.nodes[t.nc-1]
+	end := tail.Cap()
+	if t.maxSize > 0 && t.maxSize-t.size < (end-tail.w) {
+		end = tail.w + t.maxSize - t.size
+	}
+
+	n, err := syscall.Read(fd, tail.buf[tail.w:end])
+	tail.w += n
+	t.size += n
+
+	return n, err
+}
+
 //#endregion
 
 //#region common logic
@@ -380,7 +408,7 @@ func (t *Buffer) Release() {
 
 //#endregion
 
-func (t *Buffer) addNodeToArray(n *node) {
+func (t *Buffer) addNode(n *node) {
 	t.expand()
 
 	t.nodes[t.nc] = n
@@ -477,7 +505,7 @@ func (t *Buffer) ensureReadable(size int) error {
 
 func (t *Buffer) writeUInt8(n uint8) {
 	if t.writer() == nil || t.writer().WritableBytes() < 1 {
-		t.addNodeToArray(newNode(defaultMinAllocSize))
+		t.addNode(newNode(defaultMinAllocSize))
 	}
 
 	t.writer().buf[t.writer().w] = n
