@@ -205,6 +205,15 @@ func (t *Buffer) ReadBytes(size int) ([]byte, error) {
 	return data, err
 }
 
+func (t *Buffer) ReadString(n int) (string, error) {
+	data, err := t.ReadBytes(n)
+	if err != nil {
+		return "", err
+	}
+
+	return bytesToString(data), nil
+}
+
 func (t *Buffer) Read(p []byte) (n int, err error) {
 	n = 0
 	i := 0
@@ -326,6 +335,11 @@ func (t *Buffer) WriteInt(n int) error {
 
 func (t *Buffer) WriteUInt(n uint) error {
 	return t.WriteUInt64(uint64(n))
+}
+
+func (t *Buffer) WriteString(s string) error {
+	data := stringToBytes(s)
+	return t.WriteBytes(data)
 }
 
 func (t *Buffer) Write(p []byte) (int, error) {

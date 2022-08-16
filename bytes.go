@@ -1,6 +1,10 @@
 package buffer
 
-import "sync"
+import (
+	"reflect"
+	"sync"
+	"unsafe"
+)
 
 var (
 	defaultBytesPool = newBytesPoolSize(63)
@@ -85,4 +89,17 @@ func getBytes(size int) []byte {
 
 func releaseBytes(data []byte) {
 	defaultBytesPool.put(data)
+}
+
+func stringToBytes(s string) (data []byte) {
+	p := unsafe.Pointer((*reflect.StringHeader)(unsafe.Pointer(&s)).Data)
+	hdr := (*reflect.SliceHeader)(unsafe.Pointer(&data))
+	hdr.Data = uintptr(p)
+	hdr.Cap = len(s)
+	hdr.Len = len(s)
+	return data
+}
+
+func bytesToString(data []byte) (s string) {
+	return *(*string)(unsafe.Pointer(&data))
 }
