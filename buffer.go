@@ -2,6 +2,7 @@ package buffer
 
 import (
 	"errors"
+	"golang.org/x/sys/unix"
 	"syscall"
 )
 
@@ -232,6 +233,27 @@ func (t *Buffer) Read(p []byte) (n int, err error) {
 	t.adjust()
 
 	return n, nil
+}
+
+func (t *Buffer) ReadToFd(fd int) (n int, err error) {
+	ind := 0
+
+	for ind < t.nc {
+		no := t.nodes[ind]
+		n0, e0 := unix.Write(fd, no.buf[no.r:no.w])
+		if n0 > 0 {
+			n += n0
+		}
+		if e0 != nil || n0 < no.ReadableBytes() {
+			err = e0
+			break
+		}
+		ind++
+	}
+
+	t.skip(n)
+
+	return
 }
 
 //#endregion
@@ -505,7 +527,7 @@ func (t *Buffer) ensureReadable(size int) error {
 
 func (t *Buffer) writeUInt8(n uint8) {
 	if t.writer() == nil || t.writer().WritableBytes() < 1 {
-		t.addNode(newNode(defaultMinAllocSize))
+		t.addNode(newNode(t.minAllocSize))
 	}
 
 	t.writer().buf[t.writer().w] = n

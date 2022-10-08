@@ -1,7 +1,9 @@
 package buffer
 
 import (
+	"golang.org/x/sys/unix"
 	"math/rand"
+	"os"
 	"testing"
 )
 
@@ -409,5 +411,59 @@ func Test_BufferRead(t *testing.T) {
 
 	if data[0] != 1 || data[3] != 4 {
 		t.Fail()
+	}
+}
+
+func Test_BufferReadToFd(t *testing.T) {
+	var number int64 = 10000
+	buf := NewWithOptions(Options{
+		MinAllocSize: 4,
+	})
+
+	buf.WriteInt64(number)
+
+	path := "/tmp/buffer_test"
+	defer os.Remove(path)
+
+	file, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, os.ModePerm)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fd := int(file.Fd())
+
+	n, err := buf.ReadToFd(fd)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n != 8 {
+		t.Fatal()
+	}
+	if buf.Len() > 0 {
+		t.Fatal()
+	}
+	if err = unix.Fsync(fd); err != nil {
+		t.Fatal(err)
+	}
+	if err = unix.Close(fd); err != nil {
+		t.Fatal(err)
+	}
+
+	file, err = os.OpenFile(path, os.O_RDONLY, os.ModePerm)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fd = int(file.Fd())
+
+	buf = New()
+	n, err = buf.WriteFromFd(fd)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n != 8 {
+		t.Fatal()
+	}
+
+	if number, err = buf.ReadInt64(); number != 10000 || err != nil {
+		t.Fatal()
 	}
 }
